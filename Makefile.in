@@ -1,0 +1,8 @@
+CROSS := 
+CC	 := $(CROSS)gcc
+AR	 := $(CROSS)ar
+LD	 := $(CROSS)ld
+CPLUSPLUS := $(CROSS)g++
+CFLAGS := -g -O0 -Wall -fPIC 
+#INCLUDE= -I. -I /root/11111/zookeeper-3.4.6/src/c/include/ -I /root/11111/zookeeper-3.4.6/src/c/generated/
+INCLUDE= -I. -I ../zookeeper-3.4.6/src/c/include/ -I ../zookeeper-3.4.6/src/c/generated/
