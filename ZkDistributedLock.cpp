@@ -39,7 +39,7 @@ public:
 	void handleDataChange(string &dataPath, string &data)
 	{}
 	void handleDataCreate(string &dataPath){}
-	void   handleDataDeleted(string &dataPath){
+	void   handleDataDeleted(const string &dataPath){
 		pthread_mutex_lock(&(pZklock->DLockmutex));
 		pZklock->DLockStats = 0;
 		pthread_cond_broadcast(&(pZklock->DLockcond));
