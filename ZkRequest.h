@@ -27,7 +27,7 @@
 #include <boost/enable_shared_from_this.hpp>
 
 using   namespace std;
-using   boost::shared_ptr;
+using   namespace boost;
 
 class ZkRequest:public enable_shared_from_this<ZkRequest>, virtual public ZkBase, public IZkChildListener
 {
