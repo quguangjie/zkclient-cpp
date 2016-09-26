@@ -78,7 +78,21 @@ private:
  */
 class IZkDataListener {
 public:
+	IZkDataListener()  {}
 	IZkDataListener(const string &path) 
+	{ 
+		int 	i1, i2;
+		int 	len = sizeof(_randStr);
+		reInstallWatchChildren = false;
+		_dataPath = path; 
+
+		for(i1=0; i1<len-1; ++i1) 
+		{
+			i2 = rand()%26 + 65 + rand()%2*32;  
+			_randStr[i1]=(char)i2;
+		}
+	}
+	void setDataPath(const string &path) 
 	{ 
 		int 	i1, i2;
 		int 	len = sizeof(_randStr);
@@ -118,6 +132,7 @@ private:
  */
 class IZkChildListener {
 public:  
+	IZkChildListener() {}
 	IZkChildListener(const string &parentPath)
 	{
 		int 	i1, i2;
@@ -131,6 +146,18 @@ public:
 		}
 	}
 	virtual ~IZkChildListener(){};
+	void   setParentPath(const string &parentPath)
+	{
+		int 	i1, i2;
+		int 	len = sizeof(_randStr);
+		_path = parentPath;
+
+		for(i1=0; i1<len-1; ++i1) 
+		{
+			i2 = rand()%26 + 65 + rand()%2*32;  
+			_randStr[i1]=(char)i2;
+		}
+	}
     /**
      * Called when the children of the given path changed.
      * <p>
@@ -141,7 +168,7 @@ public:
      * @param currentChildren The children or null if the root node (parent path) was deleted.
      * @throws Exception
      */
-    virtual void handleChildChange(const string &parentPath, list<string> &currentChildren){};
+    virtual void handleChildChange(const string &parentPath, const list<string> &currentChildren){};
 	virtual void handleParentChange(const string &parentPath){};
 	string &parentPath(){return _path;};
 private:

@@ -17,14 +17,15 @@
 
 #ifndef __ZKCLIENT_ZKACCEPT  
 #define __ZKCLIENT_ZKACCEPT  
-
+#include <boost/enable_shared_from_this.hpp>
+#include "ZkClient.h"
 #include "ZkLeader.h"
 
 class ZkBase;
 class ZkNode;
 class ZkLeader;
 
-class ZkAccept: virtual public ZkLeader  
+class ZkAccept: public boost::enable_shared_from_this<ZkAccept>, virtual public ZkLeader, public IZkDataListener
 {
 public:  
 	ZkAccept(const string &name, const string &addr, const string &serstring, const long ver);   
@@ -34,6 +35,7 @@ public:
 
 	bool serRegister();  
 	void leader(list<ZkNode> &follow);
+	void handleDataDeleted(const string &dataPath);
 private: 
 	string _acPath;
 	string _acNodeName;

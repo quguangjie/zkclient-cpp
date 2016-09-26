@@ -48,25 +48,23 @@ class ZkBase: public ZkNode
 #define     ZKBASE_CONNECTIONTIMEOUT      (30)  
 
 public:
-	ZkBase(const string &name, const string &serstring);
-	ZkBase(const string &name, const string &addr, const string &serstring);
+	ZkBase(const string &name, const string &zkhosts);
+	ZkBase(const string &name, const string &addr, const string &zkhosts);
 	~ZkBase();
 	bool init();
-	bool setServer(string &ser);
 
-	shared_ptr<ZkClient>  getClientPtr(){return _zkc;}
-	string getSerRegPath(){return _serRegPath;}
-	string getDLockPath(){return _serDLockPath;}
-	string getLeaderPath(){return _serLeaderPath;}
+	const string& 			getSerRegPath(){return _serRegPath;}
+	const string& 			getDLockPath(){return _serDLockPath;}
+	const string& 			getLeaderPath(){return _serLeaderPath;}
 
+protected:
+	shared_ptr<ZkClient> 	_zkclient; 
 private:
-	string 					_serstring; 
-	static pthread_mutex_t  _mutex;
-	static shared_ptr<ZkClient> _zkc; 
-	static  string     _serRegPath; 
-	static  string 	_serDLockPath;
-	static  string 	_serLeaderPath;
-	static  string 	_serSessionPath;
+	string 					_zkhosts; 
+	static  string      	_serRegPath; 
+	static  string 			_serDLockPath;
+	static  string 			_serLeaderPath;
+	static  string 			_serSessionPath;
 };
 
 

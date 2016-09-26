@@ -18,38 +18,42 @@
 #ifndef __ZKCLIENT_ZKREQUEST
 #define __ZKCLIENT_ZKREQUEST
 #include "ZkBase.h"
+#include "ZkClient.h"
 #include <pthread.h>
 #include <list>
 #include <map>
 #include <time.h>
-#include "boost/shared_ptr.hpp"
+#include <boost/shared_ptr.hpp>
+#include <boost/enable_shared_from_this.hpp>
 
 using   namespace std;
 using   boost::shared_ptr;
 
-class watchReqNodeChild;
-class ZkRequest:virtual public ZkBase
+class ZkRequest:public enable_shared_from_this<ZkRequest>, virtual public ZkBase, public IZkChildListener
 {
 public:
-	ZkRequest(const string &name, const string &serstring, const long ver);   
+	ZkRequest(const string &name, const string &serstring, long ver);   
 	virtual ~ZkRequest();
 
 	bool    discovery(); 
 	bool    getServer(string &ip, int &port, const string &ID=null_string);  
 	
-	pthread_mutex_t ReqMutex;
-	const list<string> getList()const {return _reqSerlist;}
-	void setList(list<string> &l){_reqSerlist = l;}
+	const list<string>& getList()const {return _reqSerlist;}
+	void setList(const  list<string> &l){_reqSerlist = l;}
+
 private:
 #define    NULL_STRING    ""
 	static const string   null_string;
+	void handleChildChange(const string &parentPath, const list<string> &currentChildren);
+	void handleParentChange(const string &parentPath);
 
 	bool  getServer(string &s, const string &ID); 
 	bool checkNodeExist();
 	void changeListToMap();
+
+	pthread_mutex_t mutex;
 	string _reqName;
 	string _reqSerFullPath;
-	shared_ptr<watchReqNodeChild> _reqMywc;
 	list<string> _reqSerlist;
 	multimap<string ,string > _reqSermap;
 };

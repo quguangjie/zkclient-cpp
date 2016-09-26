@@ -18,6 +18,7 @@
 #include  "ZkBase.h"
 #include  "ZkLeader.h"
 #include  "ZkClient.h"
+#include  <boost/make_shared.hpp>
 
 ZkLeader::ZkLeader(const string &name, const string &addr, const string &serstring):ZkBase(name, addr, serstring)
 {
@@ -33,9 +34,9 @@ ZkLeader::ZkLeader(const string &name, const string &addr, const string &serstri
 	_LdcreateFlag = false;
 	init();
 	string fullpath = _LdPath + "/" +_LdNodeName;
-	getClientPtr()->createPersistent( _LdPath, true);
+	_zkclient->createPersistent( _LdPath, true);
 	
-	getClientPtr()->createEphemeral(fullpath);
+	_zkclient->createEphemeral(fullpath);
 	_LdcreateFlag = true;
 }
 ZkLeader::~ZkLeader()
@@ -43,7 +44,7 @@ ZkLeader::~ZkLeader()
 	if(_LdcreateFlag)
 	{
 		string fullpath = _LdPath + "/" +_LdNodeName;
-		getClientPtr()->deleteRecursive(fullpath);
+		_zkclient->deleteRecursive(fullpath);
 	}
 }
 
@@ -51,7 +52,7 @@ bool ZkLeader::isLeader()
 {
 	list<string> result ;
 	try{
-		result = getClientPtr()->getChildren(_LdPath, false);
+		result = _zkclient->getChildren(_LdPath, false);
 		result.sort();
 
 		list<string>::iterator it =result.begin();
@@ -66,10 +67,10 @@ bool ZkLeader::isLeader()
 		return false;
 	}
 }
-list<ZkNode>&  ZkLeader::follower()
+const list<shared_ptr<ZkNode> >&  ZkLeader::follower()
 {
 	list<string> result;
-	result = getClientPtr()->getChildren(_LdPath, false);
+	result = _zkclient->getChildren(_LdPath, false);
 	result.sort();
 	
 	list<string>::iterator it =result.begin();
@@ -86,13 +87,13 @@ list<ZkNode>&  ZkLeader::follower()
 	}
 	for (it =result.begin();it!=result.end();++it)
 	{
-		ZkNode node(_LdPath,(*it));
-		_follower.push_back(node);
+		shared_ptr<ZkNode> p = ::boost::make_shared<ZkNode>(_LdPath,(*it));
+		_follower.push_back(p);
 	}
 	return _follower;
 }
 
-void ZkLeader::leader(list<ZkNode> &follow)
+void ZkLeader::leader(list<shared_ptr<ZkNode> > &follow)
 {
 
 }

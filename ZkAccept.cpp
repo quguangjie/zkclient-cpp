@@ -22,46 +22,13 @@
 #include <boost/lexical_cast.hpp>
 
 
-
-class watchServerRoute :public IZkDataListener
-{
-	shared_ptr<ZkClient> _zkcli;
-	ZkAccept *_accpPtr;
-	public:
-	watchServerRoute(shared_ptr<ZkClient> cli, const string &filepath) : IZkDataListener(filepath)
-	{
-		_zkcli = cli;
-	}
-	~watchServerRoute(){}
-
-	void handleDataDeleted(const string &filepath)
-	{
-		cout << "watchServerRoute::handleDataDeleted" << endl;
-		try{
-			_zkcli->createEphemeral(filepath);  
-		}catch (ZkExceptionNodeExists &e){
-			cout << "watchServerRoute::handleDataDeleted NodeExist "<< e.what() <<endl;
-			return ;
-		}catch (ZkExceptionNoNode &e){
-			cout << "watchServerRoute::handleDataDeleted ZkException "<< e.what() <<endl;
-			return; 
-		}catch (ZkException &e){
-			cout << "watchServerRoute::handleDataDeleted ZkException "<< e.what() <<endl;
-			return ;
-		}
-		return;  
-	}
-};
-
-
-
-
 ZkAccept::ZkAccept(const string &name, const string &addr, const string &serstring, const long ver):ZkBase(name, addr,serstring),ZkLeader(name, addr, serstring) 
 {
 	 _acPath =  getSerRegPath()  + "/" + name + "/v" + boost::lexical_cast<string>(ver);
 	 cout << _acPath << endl;
 	 _acNodeName = addr;
-
+	string fullPath = _acPath + "/" + _acNodeName;
+	setDataPath(fullPath);
 }
 ZkAccept::ZkAccept(const string &name, const string &addr, const string &serstring, const string &leaderName, const long ver):ZkBase(name, addr,serstring),ZkLeader(name, addr, serstring,leaderName) 
 {
@@ -74,18 +41,17 @@ ZkAccept::~ZkAccept()
 
 bool ZkAccept::serRegister() 
 {
-	shared_ptr<ZkClient> zk = getClientPtr();	
-	getClientPtr()->createPersistent(_acPath,true);
+	shared_ptr<ZkClient> zk = _zkclient;	
+	_zkclient->createPersistent(_acPath,true);
 	string fullPath = _acPath + "/" + _acNodeName;
 	while(true)
 	{
 		try{
 			try {
-				getClientPtr()->deleteRecursive(fullPath); 
+				_zkclient->deleteRecursive(fullPath); 
 			} catch (...) {}
-			getClientPtr()->createEphemeral(fullPath);
-			shared_ptr<watchServerRoute> _reqMywc (new watchServerRoute(getClientPtr(), fullPath));  
-			getClientPtr()->subscribeDataChanges(fullPath, _reqMywc);
+			_zkclient->createEphemeral(fullPath);
+			_zkclient->subscribeDataChanges(fullPath, shared_from_this());
 			printf("[%s.%d]\n", __FUNCTION__,__LINE__);
 			break;
 		}catch (ZkExceptionNodeExists &e){
@@ -103,4 +69,21 @@ void ZkAccept::leader(list<ZkNode> &follow)
 {
 }
 
+void ZkAccept::handleDataDeleted(const string &filepath)
+{
+	cout << "watchServerRoute::handleDataDeleted" << endl;
+	try{
+		_zkclient->createEphemeral(filepath);  
+	}catch (ZkExceptionNodeExists &e){
+		cout << "watchServerRoute::handleDataDeleted NodeExist "<< e.what() <<endl;
+		return ;
+	}catch (ZkExceptionNoNode &e){
+		cout << "watchServerRoute::handleDataDeleted ZkException "<< e.what() <<endl;
+		return; 
+	}catch (ZkException &e){
+		cout << "watchServerRoute::handleDataDeleted ZkException "<< e.what() <<endl;
+		return ;
+	}
+	return;  
+}
 

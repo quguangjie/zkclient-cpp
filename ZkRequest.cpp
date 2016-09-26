@@ -21,48 +21,38 @@
 #include <boost/lexical_cast.hpp>
 
 
-class watchReqNodeChild :public IZkChildListener
-{
-	shared_ptr<ZkClient> _zkcli;
-	ZkRequest *_reqPtr;
-public:
-	watchReqNodeChild(shared_ptr<ZkClient> cli, string &parentPath,ZkRequest *zkreqPtr):IZkChildListener(parentPath)
-	{
-		_zkcli = cli; 
-		_reqPtr =zkreqPtr; 
-	}
-	~watchReqNodeChild(){}
-
-	void handleChildChange(const string &parentPath, list<string> &currentChildren)
-	{
-		cerr << "handleChildChange[" << parentPath << "]" << endl;   
-		pthread_mutex_lock(&_reqPtr->ReqMutex);
-		_reqPtr->setList(currentChildren);
-		pthread_mutex_unlock(&_reqPtr->ReqMutex);
-	}
-	void handleParentChange(const string &parentPath){}
-
-};
-
-ZkRequest::ZkRequest(const string &name, const string &serstring, const long ver):ZkBase(name, serstring)
+const string ZkRequest::null_string = NULL_STRING;
+ZkRequest::ZkRequest(const string &name, const string &serstring, long ver):ZkBase(name, serstring),_reqName(name)
 {
 	_reqName = name;
 	_reqSerFullPath =  getSerRegPath()  + "/" + name + "/v" + boost::lexical_cast<string>(ver);
 	cout << _reqSerFullPath << endl;
+	setParentPath(_reqSerFullPath);
 
-	pthread_mutex_init(&ReqMutex,NULL);
+	pthread_mutex_init(&mutex,NULL);
 	init();
 }
 ZkRequest::~ZkRequest()
 {
-		getClientPtr()->unsubscribeChildChanges( _reqSerFullPath, _reqMywc);
-		pthread_mutex_destroy(&ReqMutex);
+		_zkclient->unsubscribeChildChanges( _reqSerFullPath, shared_from_this());
+		pthread_mutex_destroy(&mutex);
 
 }
+void ZkRequest::handleChildChange(const string &parentPath, const list<string> &currentChildren)
+{
+	cerr << "handleChildChange[" << parentPath << "]" << endl;   
+	pthread_mutex_lock(&mutex);
+	setList(currentChildren);
+	pthread_mutex_unlock(&mutex);
+}
+void ZkRequest::handleParentChange(const string &parentPath)
+{
+}
+
 bool ZkRequest::checkNodeExist()
 {
 	try{
-		return  getClientPtr()->exists(_reqSerFullPath,false);
+		return  _zkclient->exists(_reqSerFullPath,false);
 	}
 	catch (ZkExceptionNoNode &e)
 	{
@@ -112,10 +102,9 @@ bool ZkRequest::discovery()
 {
 	if (!checkNodeExist())
 		return false;
-	shared_ptr<watchReqNodeChild> _reqMywc (new watchReqNodeChild(getClientPtr(),_reqSerFullPath,this));
 	try{
-		getClientPtr()->subscribeChildChanges( _reqSerFullPath, _reqMywc);
-		_reqSerlist= getClientPtr()->getChildren(_reqSerFullPath);
+		_zkclient->subscribeChildChanges( _reqSerFullPath, shared_from_this());
+		_reqSerlist= _zkclient->getChildren(_reqSerFullPath);
 	}catch (ZkExceptionNoNode &e){
 		cerr <<"subscribeDataChanges"<<e.what()<<endl;
 		return false;
@@ -137,13 +126,13 @@ bool  ZkRequest::getServer(string &s, const string &ID)
 {
 	int 		size;
 	map<string, string >::iterator it_map;
-	pthread_mutex_lock(&ReqMutex);
+	pthread_mutex_lock(&mutex);
 	changeListToMap();
 	size = _reqSermap.count(ID);
 	it_map = _reqSermap.find(ID);
 	if (it_map == _reqSermap.end())
 	{
-		pthread_mutex_unlock(&ReqMutex);
+		pthread_mutex_unlock(&mutex);
 		return false;
 	}
 	srand((unsigned int )time(NULL));
@@ -154,11 +143,10 @@ bool  ZkRequest::getServer(string &s, const string &ID)
 		i++;	
 	}
 	s = (*it_map).second;
-	pthread_mutex_unlock(&ReqMutex);
+	pthread_mutex_unlock(&mutex);
 	return true;
 }
 
-const string ZkRequest::null_string = NULL_STRING;
 
 
 

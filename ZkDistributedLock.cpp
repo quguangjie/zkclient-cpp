@@ -36,9 +36,9 @@ public:
 		pZklock = plock;  
 	}
 	~watchDLockNode(){}
-	void handleDataChange(string &dataPath, string &data)
+	void handleDataChange(const string &dataPath, string &data)
 	{}
-	void handleDataCreate(string &dataPath){}
+	void handleDataCreate(const string &dataPath){}
 	void   handleDataDeleted(const string &dataPath){
 		pthread_mutex_lock(&(pZklock->DLockmutex));
 		pZklock->DLockStats = 0;
@@ -69,7 +69,7 @@ bool ZkDistributedLock::IsNeedCreate()
 	_dLockFullPath = _dLockPath+"/"+_dLockName;
 	bool ret = false;
 	try{
-		ret = getClientPtr()->exists(_dLockFullPath,false);
+		ret = _zkclient->exists(_dLockFullPath,false);
 		if (ret)
 		{
 			_dLockNoCreate= 1;
@@ -115,26 +115,27 @@ bool ZkDistributedLock::Dlock()
 	{
 		if (!IsNeedCreate())
 		{
-			getClientPtr()->createPersistent(_dLockFullPath,true);
+			_zkclient->createPersistent(_dLockFullPath,true);
 		}
 	}
 	string lockPath = _dLockFullPath + "/";
-	_dLockNodeName=getClientPtr()->createEphemeralSequential(lockPath,NULL);
-	cout << "ZkDistributedLock::Dlock: " << _dLockNodeName << endl;
+	_dLockNodeName=_zkclient->createEphemeralSequential(lockPath,NULL);
+	//cout << "ZkDistributedLock::Dlock: " << _dLockNodeName << endl;
 step1:
-	_dLockList = getClientPtr()->getChildren(_dLockFullPath, false);
+	_dLockList = _zkclient->getChildren(_dLockFullPath, false);
 	string minlock = findMinLock();
 	if (minlock == _dLockNodeName)
 	{
 		return true;
 	}
 
-	shared_ptr<watchDLockNode> mywd(new watchDLockNode(getClientPtr(),shared_from_this(),  minlock));
+	shared_ptr<watchDLockNode> mywd(new watchDLockNode(_zkclient,shared_from_this(),  minlock));
 	try{
-		getClientPtr()->subscribeDataChanges(minlock, mywd);
+		_zkclient->subscribeDataChanges(minlock, mywd);
+		//cout << "ZkDistributedLock::subscribeDataChanges: " << minlock << endl;
 	}catch (ZkExceptionNoNode &e){
 		cout <<"bool ZkDistributedLock::Dlock():::subscribeDataChanges"<<e.what()<<endl;
-		getClientPtr()->deleteRecursive(_dLockNodeName);
+		_zkclient->deleteRecursive(_dLockNodeName);
 		return false; 
 	}
 	pthread_mutex_lock(&DLockmutex);
@@ -144,7 +145,7 @@ step1:
 		pthread_cond_wait(&DLockcond,&DLockmutex);
 	}
 	DLockStats =1;
-	getClientPtr()->unsubscribeDataChanges(minlock, mywd);
+	_zkclient->unsubscribeDataChanges(minlock, mywd);
 
 	pthread_mutex_unlock(&DLockmutex);
 	goto step1;
@@ -154,7 +155,7 @@ bool ZkDistributedLock::unDlock()
 {
 	cout << "ZkDistributedLock::unDlock: " << _dLockNodeName << endl;
 	try{
-	getClientPtr()->deleteRecursive(_dLockNodeName);
+	_zkclient->deleteRecursive(_dLockNodeName);
 	}catch (ZkExceptionNoNode &e){
 	}catch (ZkException &e){
 	}
@@ -166,22 +167,22 @@ bool ZkDistributedLock::waitDlock(long timeout)
 	{
 		if (!IsNeedCreate())
 		{
-			getClientPtr()->createPersistent(_dLockFullPath,true);
+			_zkclient->createPersistent(_dLockFullPath,true);
 		}
 	}
 	string lockPath = _dLockFullPath + "/";
-	_dLockNodeName=getClientPtr()->createEphemeralSequential(lockPath,NULL);
+	_dLockNodeName=_zkclient->createEphemeralSequential(lockPath,NULL);
 
-	_dLockList= getClientPtr()->getChildren(_dLockFullPath, false);
+	_dLockList= _zkclient->getChildren(_dLockFullPath, false);
 	string minlock = findMinLock();
 	if (minlock == _dLockNodeName)
 	{
 		return true;
 	}
 	
-	shared_ptr<watchDLockNode> mywd(new watchDLockNode(getClientPtr(), shared_from_this(), minlock));
+	shared_ptr<watchDLockNode> mywd(new watchDLockNode(_zkclient, shared_from_this(), minlock));
 	try{
-		getClientPtr()->subscribeDataChanges(minlock, mywd);
+		_zkclient->subscribeDataChanges(minlock, mywd);
 	}catch (ZkExceptionNoNode &e){
 		cout <<"bool ZkDistributedLock::waitDlock():::subscribeDataChanges"<<e.what()<<endl;
 	}
@@ -196,16 +197,16 @@ bool ZkDistributedLock::waitDlock(long timeout)
 		pthread_cond_timedwait(&DLockcond,&DLockmutex,&mytimeout);
 	}
 	DLockStats =1;
-	getClientPtr()->unsubscribeDataChanges(minlock, mywd);
+	_zkclient->unsubscribeDataChanges(minlock, mywd);
 	pthread_mutex_unlock(&DLockmutex);
 
-	_dLockList= getClientPtr()->getChildren(_dLockFullPath, false);
+	_dLockList= _zkclient->getChildren(_dLockFullPath, false);
 	minlock = findMinLock();
 	if (minlock == _dLockNodeName)
 	{
 		return true;
 	}
-	getClientPtr()->deleteRecursive(_dLockNodeName);
+	_zkclient->deleteRecursive(_dLockNodeName);
 	return false;
  }
 

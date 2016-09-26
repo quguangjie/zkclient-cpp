@@ -31,19 +31,17 @@ class ZkLeader:virtual public ZkBase
 public:
 	ZkLeader(const string &name, const string &addr, const string &serstring);   
 	ZkLeader(const string &name, const string &addr, const string &serstring, const string &leadername);
-
 	virtual ~ZkLeader();  
+	virtual   void leader(list<shared_ptr<ZkNode> > &follow); 
 
-	bool isLeader();
-	list<ZkNode> &follower();
-
-	virtual   void leader(list<ZkNode> &follow); 
+	bool 		  					 isLeader();
+	const list<shared_ptr<ZkNode> > &follower();
 
 private:
-	list<ZkNode>            _follower;
-	string 			_LdPath;
-	string 			_LdNodeName;
-	bool 				_LdcreateFlag;
+	list<shared_ptr<ZkNode> > _follower;
+	string 					_LdPath;
+	string 					_LdNodeName;
+	bool 				    _LdcreateFlag;
 };
 
 

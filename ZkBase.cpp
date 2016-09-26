@@ -46,61 +46,46 @@ string &ZkNode::getName()
 	return _name; 
 }
 
-ZkBase::ZkBase(const string &name, const string &serstring):ZkNode(name)
+ZkBase::ZkBase(const string &name, const string &zkhosts):ZkNode(name)
 {
-	_serstring = serstring; 
+	_zkhosts = zkhosts; 
 }
-ZkBase::ZkBase(const string &name, const string &addr, const string &serstring):ZkNode(name, addr)
+ZkBase::ZkBase(const string &name, const string &addr, const string &zkhosts):ZkNode(name, addr)
 { 
-	_serstring = serstring; 
+	_zkhosts = zkhosts; 
 }
 ZkBase::~ZkBase()
 {
 }
 bool ZkBase::init()
 {
-	try
-	{
-		pthread_mutex_lock(&_mutex);
-		if(_zkc == NULL){
-			_zkc = shared_ptr<ZkClient>(new ZkClient(_serstring, ZKBASE_SESSIONTIMEOUT, ZKBASE_CONNECTIONTIMEOUT));
-			if(_zkc==NULL)
+	try {
+		if(_zkclient == NULL){
+			_zkclient = shared_ptr<ZkClient>(new ZkClient(_zkhosts, ZKBASE_SESSIONTIMEOUT, ZKBASE_CONNECTIONTIMEOUT));
+			if(_zkclient==NULL)
 			{
-				cout<< "_zkc(new ZkClient( err"<<endl;
+				cout<< "_zkclient(new ZkClient( err"<<endl;
 				return false;
 			}
 			usleep(800000);
-			_zkc->createPersistent(_serRegPath, true);
-			_zkc->createPersistent(_serDLockPath, true);
-			_zkc->createPersistent(_serLeaderPath, true);
-			_zkc->createPersistent(_serSessionPath, true);
+			_zkclient->createPersistent(_serRegPath, true);
+			_zkclient->createPersistent(_serDLockPath, true);
+			_zkclient->createPersistent(_serLeaderPath, true);
+			_zkclient->createPersistent(_serSessionPath, true);
 		}
-		pthread_mutex_unlock(&_mutex);
 		return true;
-	}
-	catch (ZkExceptionConnectionLoss e)
-	{
-		pthread_mutex_unlock(&_mutex);
+	} catch (ZkExceptionConnectionLoss e) {
+		throw e;
+	} catch (exception e) {
 		throw e;
 	}
-	catch (exception e)
-	{
-		pthread_mutex_unlock(&_mutex);
-		throw e;
-	}
-	return false;
-}
-bool ZkBase::setServer(string &ser)
-{
 	return false;
 }
 
-pthread_mutex_t      ZkBase::_mutex = PTHREAD_MUTEX_INITIALIZER;
 string      ZkBase::_serRegPath("/register");
 string      ZkBase::_serDLockPath("/lock");
 string      ZkBase::_serLeaderPath("/leader");
 string      ZkBase::_serSessionPath("/session");
-shared_ptr<ZkClient>      ZkBase::_zkc;
 
 
 
