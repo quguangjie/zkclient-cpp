@@ -10,7 +10,6 @@ all: libzkclient.a
 
 libzkclient.a : $(OBJS)
 	$(AR) cr $@ $^
-	cp libzkclient.a ../lib/
 
 %.o:%.c
 	$(CC) $(CFLAGS) $(INCLUDE) $< -c -o $@ 
